@@ -1,0 +1,1 @@
+SELECT MAX(event_id) FROM fact_prices
