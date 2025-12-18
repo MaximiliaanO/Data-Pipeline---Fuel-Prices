@@ -7,11 +7,11 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 #Set logging directory
-BASE_DIR = Path(__file__).resolve()
-LOG_FILE = BASE_DIR.parent.parent / 'logs' / 'scraper.log'
+BASE_DIR = Path(__file__).resolve().parent
+LOG_FILE = BASE_DIR.parent / 'logs' / 'scraper.log'
 
 #Load credentials from .env
-load_dotenv('env/.env')
+load_dotenv(BASE_DIR.parent / 'env' /'.env')
 BASE_URL=os.getenv('BASE_URL')
 USER_AGENT = os.getenv('USER_AGENT')
 

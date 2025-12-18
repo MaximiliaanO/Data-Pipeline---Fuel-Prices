@@ -1,13 +1,14 @@
 #! python3
 #  Web-scraper to scrape price data from fuel stations from a specific Operator.
 
-import logging
+import logging, os
 from scripts import scraper, db
 from pathlib import Path
 
-#Set logging directory
-BASE_DIR = Path(__file__).resolve()
+#Set directories (so it runs well on cron)
+BASE_DIR = Path(__file__).resolve().parent
 LOG_FILE = BASE_DIR / 'logs' / 'main.log'
+os.chdir(BASE_DIR)
 
 #Logging config
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s', filename=str(LOG_FILE))

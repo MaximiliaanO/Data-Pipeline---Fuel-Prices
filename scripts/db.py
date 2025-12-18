@@ -7,11 +7,11 @@ from psycopg2.extras import Json
 from dotenv import load_dotenv
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve()
-LOG_FILE = BASE_DIR.parent.parent / 'logs' / 'db.log'
+BASE_DIR = Path(__file__).resolve().parent
+LOG_FILE = BASE_DIR.parent / 'logs' / 'db.log'
 
 #Load credentials from .env
-load_dotenv('env/.env')
+load_dotenv(BASE_DIR.parent / 'env' /'.env')
 
 #Logging config
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename=str(LOG_FILE))
