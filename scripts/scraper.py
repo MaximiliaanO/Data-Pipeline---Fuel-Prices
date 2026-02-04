@@ -1,7 +1,7 @@
 # This module handles all the web requests, html and json parsing.
 
 #Import modules:
-import logging, requests, bs4, re, json, time, os
+import logging, requests, bs4, re, json, time, os, aiohttp, asyncio
 from datetime import datetime
 from dotenv import load_dotenv
 from pathlib import Path
@@ -12,22 +12,24 @@ LOG_FILE = BASE_DIR.parent / 'logs' / 'scraper.log'
 
 #Load credentials from .env
 load_dotenv(BASE_DIR.parent / 'env' /'.env')
-BASE_URL=os.getenv('BASE_URL')
-USER_AGENT = os.getenv('USER_AGENT')
+BASE_URL="https://www.google.com" #os.getenv('BASE_URL')
+USER_AGENT = "Fuel Scarper" #os.getenv('USER_AGENT')
 
 #Logging configuration.
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename=str(LOG_FILE))
 logging.disable(logging.INFO)
 
 #Scraper functions
-def download_html(url=BASE_URL): # Hoofdpagina met JSON van alle tankstations.
+async def download_html(url=BASE_URL): # Hoofdpagina met JSON van alle tankstations.
     '''Requests and downloads the selected URL'''
     try:
-        headers = {'user-agent' : USER_AGENT}
+        headers = {"user-agent" : "USER_AGENT"}
         logging.info('url: %s' %url)
-        request_response = requests.get(url, headers=headers)
-        request_response.raise_for_status()
-        return request_response
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url=url, headers=headers) as response:
+                print(response.status) # printf debug
+                request_response = await response.text()
+                return request_response
     except requests.exceptions.HTTPError as e:
         logging.error('HTTP error ocurred:', e)
 
