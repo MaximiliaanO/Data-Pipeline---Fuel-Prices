@@ -1,7 +1,6 @@
 # This module handles all the web requests, html and json parsing.
 
-#Import modules:
-import logging, requests, bs4, re, json, time, os, aiohttp, asyncio
+import logging, bs4, re, json, time, os, aiohttp, asyncio
 from datetime import datetime
 from dotenv import load_dotenv
 from pathlib import Path
@@ -19,7 +18,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 logging.disable(logging.INFO)
 
 class Scraper():
-    def __init__(self, base_url:str=os.getenv('BASE_URL')):
+    def __init__(self, base_url:str=os.getenv('BASE_URL'), event_id:int=0):
         self.base_url = base_url
         self.sem = asyncio.Semaphore(15)
         self.session = None
@@ -29,6 +28,7 @@ class Scraper():
         self.coroutines = None
         self.cororesponses = []
         self.pricelist = None
+        self.event_id = event_id
 
     async def init_session(self):
         """"Initialize the client session."""
@@ -46,8 +46,8 @@ class Scraper():
         except Exception as e:
             logging.error('An error has ocurred: %s', e)
 
-    def parse_base(self):
-        '''Parses the html of the request returned (std url) and extracts the json list of gas stations'''
+    def parse_base(self) -> str:
+        '''Parses html, extracts the json list of gas stations as json-str'''
         soup = bs4.BeautifulSoup(self.base_page, 'html.parser')
         scripts = soup.find_all('script') # find all items with the <script> tag.
         logging.debug(type(scripts))
@@ -72,6 +72,7 @@ class Scraper():
         json_text = json.loads(json_regex.group(1))
         logging.debug(type(json_text)) #Check if correctly returns a dict.
         self.stations = json_text
+        return json_text
 
     def get_links(self):
         '''From the all stations JSON extract the station id's and the links to the gas station specific pages.
@@ -90,7 +91,7 @@ class Scraper():
     def generate_coroutines(self):
         self.coroutines = [self.fetch_station(station_id=id, url=link) for id, link in self.links.items()]
 
-    def parse_prices(self, event_id=0):
+    def parse_prices(self):
         '''Returns a list of tuples with (id, timestamp, fueltype, price) this will be inserted in the fact table.'''
         pricelist = [] # Initialize lists with all prices for all gas stations. List wil contain tuples (id(str), fueltype(str), price(float))
         no_price = 0
@@ -108,27 +109,27 @@ class Scraper():
                 if len(price_elems) == 2:
                     for i in range(len(prijzen)):
                         if i == 0:
-                            pricelist.append((event_id, id, datetime.now(), 'benzine', prijzen[(i - 1)]))
+                            pricelist.append((self.event_id, id, datetime.now(), 'benzine', prijzen[(i - 1)]))
                             logging.debug(f'Benzine: {prijzen[(i - 1)]}')
                         elif i == 1:
-                            pricelist.append((event_id, id, datetime.now(), 'diesel', prijzen[(i - 1)]))
+                            pricelist.append((self.event_id, id, datetime.now(), 'diesel', prijzen[(i - 1)]))
                             logging.debug(f'Diesel: {prijzen[(i - 1)]}')
-                    event_id += 1
+                    self.event_id += 1
                 elif len(price_elems) == 3:
                         for i in range(len(prijzen)):
                             if i == 0:
-                                pricelist.append((event_id, id, datetime.now(), 'benzine', prijzen[(i - 1)]))
+                                pricelist.append((self.event_id, id, datetime.now(), 'benzine', prijzen[(i - 1)]))
                                 logging.debug(f'Benzine: {prijzen[(i - 1)]}')
                             elif i == 1:
-                                pricelist.append((event_id, id, datetime.now(), 'lpg', prijzen[(i - 1)]))
+                                pricelist.append((self.event_id, id, datetime.now(), 'lpg', prijzen[(i - 1)]))
                                 logging.debug(f'LPG: {prijzen[(i - 1)]}')
                             elif i == 2:
-                                pricelist.append((event_id, id, datetime.now(), 'diesel', prijzen[(i - 1)]))
+                                pricelist.append((self.event_id, id, datetime.now(), 'diesel', prijzen[(i - 1)]))
                                 logging.debug(f'Diesel: {prijzen[(i - 1)]}')
-                            event_id += 1
+                            self.event_id += 1
         logging.warning(f'Stations without price: {str(no_price)}')
         print('Pricelist per station created.')
-        self.pricelist = pricelist # Returns a list of tuples per entry with (id, timestamp, fueltype, price)
+        self.pricelist = pricelist # Returns a list of tuples per entry with (event_id, id, timestamp, fueltype, price)
 
     async def close_session(self):
         """Close the session."""
@@ -140,7 +141,7 @@ class Scraper():
         await self.init_session()
         try:
             await self.get_base_page()
-            self.parse_base()
+            base = self.parse_base() #Stations JSON-str
             self.get_links()
             self.generate_coroutines()
             await asyncio.gather(*self.coroutines)
@@ -149,6 +150,8 @@ class Scraper():
             await self.close_session()
         end = time.perf_counter()
         print(f"\n> Total Time: {end - start:.2f} seconds")
+        return base
 
     def run_scraper(self):
         asyncio.run(self.start())
+        return self.pricelist
