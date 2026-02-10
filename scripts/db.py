@@ -60,7 +60,7 @@ class DbHandler():
             logging.error(f'Create DB Tables: Execution failed: {e}')
             print(f'Create DB Tables: Execution failed: {e}')
 
-    def transform_postcode(id, postcode):
+    def transform_postcode(self, id, postcode):
         '''Transforms dimension table postcodes'''
         match = re.search(r"^(\d{4})+(&nbsp;)?(\w\w{2})?(&nbsp;)?", postcode)
         try:

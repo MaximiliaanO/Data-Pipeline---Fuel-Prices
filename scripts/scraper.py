@@ -42,7 +42,6 @@ class Scraper():
             async with self.session.get(url=self.base_url, headers=headers) as resp:
                 page = await resp.text()
                 self.base_page = page
-                return page
         except Exception as e:
             logging.error('An error has ocurred: %s', e)
 
@@ -72,7 +71,6 @@ class Scraper():
         json_text = json.loads(json_regex.group(1))
         logging.debug(type(json_text)) #Check if correctly returns a dict.
         self.stations = json_text
-        return json_text
 
     def get_links(self):
         '''From the all stations JSON extract the station id's and the links to the gas station specific pages.
@@ -136,22 +134,26 @@ class Scraper():
         if self.session:
             await self.session.close()
 
-    async def start(self):
+    async def run_scraper(self, mode:str=None):
+        """If no argument passed to mode: only fetches the base data (links, stations).
+           If 'fetch' passed to mode fetches base and price data."""
         start = time.perf_counter()
         await self.init_session()
         try:
             await self.get_base_page()
-            base = self.parse_base() #Stations JSON-str
-            self.get_links()
-            self.generate_coroutines()
-            await asyncio.gather(*self.coroutines)
-            self.parse_prices()
+            self.parse_base() #Stations JSON-str: self.stations
+            self.get_links() #Links dict {id : link} self.links
+            if mode =='fetch':
+                self.generate_coroutines()
+                await self.init_session()
+                await asyncio.gather(*self.coroutines)
+                self.parse_prices()
         finally:
             await self.close_session()
         end = time.perf_counter()
-        print(f"\n> Total Time: {end - start:.2f} seconds")
-        return base
-
-    def run_scraper(self):
-        asyncio.run(self.start())
-        return self.pricelist
+        print(f"\n> Extracted base in: {end - start:.2f} seconds.")
+    
+    def run(self, mode:str=None):
+        """If no argument passed to mode: only fetches the base data (links, stations).
+           If 'fetch' passed to mode fetches base and price data."""
+        asyncio.run(self.run_scraper(mode=mode))
