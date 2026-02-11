@@ -8,14 +8,12 @@ import time
 
 #Set logging directory
 BASE_DIR = Path(__file__).resolve().parent
-LOG_FILE = BASE_DIR.parent / 'logs' / 'scraper.log'
+
+#Logging
+logger = logging.getLogger(__name__)
 
 #Load credentials from .env
 load_dotenv(BASE_DIR.parent / 'env' /'.env')
-
-#Logging configuration.
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename=str(LOG_FILE))
-logging.disable(logging.INFO)
 
 class Scraper():
     def __init__(self, base_url:str=os.getenv('BASE_URL'), event_id:int=0):
@@ -43,13 +41,13 @@ class Scraper():
                 page = await resp.text()
                 self.base_page = page
         except Exception as e:
-            logging.error('An error has ocurred: %s', e)
+            logger.error('An error has ocurred: %s', e)
 
-    def parse_base(self) -> str:
+    def parse_base(self):
         '''Parses html, extracts the json list of gas stations as json-str'''
         soup = bs4.BeautifulSoup(self.base_page, 'html.parser')
         scripts = soup.find_all('script') # find all items with the <script> tag.
-        logging.debug(type(scripts))
+        logger.debug(type(scripts))
 
         #Find the JSON with all the gas stations.
         for script in scripts:
@@ -69,13 +67,13 @@ class Scraper():
 
         #Create dict form JSON formatted string.
         json_text = json.loads(json_regex.group(1))
-        logging.debug(type(json_text)) #Check if correctly returns a dict.
+        logger.debug(type(json_text)) #Check if correctly returns a dict.
         self.stations = json_text
 
     def get_links(self):
         '''From the all stations JSON extract the station id's and the links to the gas station specific pages.
         This is needed to get the gas station specific prices.'''
-        logging.debug('Check length of json: ' + str(len(self.stations['places'])))
+        logger.debug('Check length of json: ' + str(len(self.stations['places'])))
         links_dict = {self.stations['places'][i]['id']:self.stations['places'][i]['guid'] for i in range(len(self.stations['places']))} #key: self.stations['places'][i]['id'] value: json_text['places'][i]['guid']
         print('Station links dict created.')
         self.links = links_dict # key, value = {id : link}
@@ -102,30 +100,30 @@ class Scraper():
                     continue
                 prijzen = [float(price.getText()[2:]) for price in price_elems] #List with prices #1: Benzine #2: Diesel #3:LPT (optional)
                 prijzen.reverse()
-                logging.debug(prijzen)
-                logging.debug('Hoevelheid prijzen: ' + str(len(prijzen)))
+                logger.debug(prijzen)
+                logger.debug('Hoevelheid prijzen: ' + str(len(prijzen)))
                 if len(price_elems) == 2:
                     for i in range(len(prijzen)):
                         if i == 0:
                             pricelist.append((self.event_id, id, datetime.now(), 'benzine', prijzen[(i - 1)]))
-                            logging.debug(f'Benzine: {prijzen[(i - 1)]}')
+                            logger.debug(f'Benzine: {prijzen[(i - 1)]}')
                         elif i == 1:
                             pricelist.append((self.event_id, id, datetime.now(), 'diesel', prijzen[(i - 1)]))
-                            logging.debug(f'Diesel: {prijzen[(i - 1)]}')
+                            logger.debug(f'Diesel: {prijzen[(i - 1)]}')
                     self.event_id += 1
                 elif len(price_elems) == 3:
                         for i in range(len(prijzen)):
                             if i == 0:
                                 pricelist.append((self.event_id, id, datetime.now(), 'benzine', prijzen[(i - 1)]))
-                                logging.debug(f'Benzine: {prijzen[(i - 1)]}')
+                                logger.debug(f'Benzine: {prijzen[(i - 1)]}')
                             elif i == 1:
                                 pricelist.append((self.event_id, id, datetime.now(), 'lpg', prijzen[(i - 1)]))
-                                logging.debug(f'LPG: {prijzen[(i - 1)]}')
+                                logger.debug(f'LPG: {prijzen[(i - 1)]}')
                             elif i == 2:
                                 pricelist.append((self.event_id, id, datetime.now(), 'diesel', prijzen[(i - 1)]))
-                                logging.debug(f'Diesel: {prijzen[(i - 1)]}')
+                                logger.debug(f'Diesel: {prijzen[(i - 1)]}')
                             self.event_id += 1
-        logging.warning(f'Stations without price: {str(no_price)}')
+        logger.warning(f'Stations without price: {str(no_price)}')
         print('Pricelist per station created.')
         self.pricelist = pricelist # Returns a list of tuples per entry with (event_id, id, timestamp, fueltype, price)
 
@@ -143,6 +141,7 @@ class Scraper():
             await self.get_base_page()
             self.parse_base() #Stations JSON-str: self.stations
             self.get_links() #Links dict {id : link} self.links
+            end_base = time.perf_counter()
             if mode =='fetch':
                 self.generate_coroutines()
                 await self.init_session()
@@ -151,9 +150,12 @@ class Scraper():
         finally:
             await self.close_session()
         end = time.perf_counter()
-        print(f"\n> Extracted base in: {end - start:.2f} seconds.")
+        logger.info(f"Extracted base page in: {end_base - start:.2f} seconds.")
+        logger.info(f"Fetched all pages: {end - end_base:.2f} seconds.")
+        logger.info(f"Ran scraper in {end - start:.2f} seconds.")
     
     def run(self, mode:str=None):
         """If no argument passed to mode: only fetches the base data (links, stations).
            If 'fetch' passed to mode fetches base and price data."""
         asyncio.run(self.run_scraper(mode=mode))
+        return mode
