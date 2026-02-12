@@ -1,0 +1,9 @@
+services:
+  scraper:
+    build: .  # Build from Dockerfile in current directory
+    container_name: fuel-scraper
+    env_file:
+    - env/.env
+    volumes:
+    - ./logs:/app/logs
+    #command: fetch

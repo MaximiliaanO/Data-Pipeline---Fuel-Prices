@@ -1,4 +1,3 @@
-from unittest.mock import patch, MagicMock
 from scripts.scraper import Scraper
 from tests.samplehtml import sample
 

@@ -29,7 +29,12 @@ def main():
     scrpr = scraper.Scraper(event_id=dtb.latest_event_id())
 
     #Run scraper
-    mode = scrpr.run(mode=None)
+    if len(sys.argv) > 1:
+        print(f'Running scraper in \'{sys.argv[1]}\' mode.')
+        used_mode = scrpr.run(mode=sys.argv[1])
+    else:
+        print('Running scraper in \'base\' mode.')
+        used_mode = scrpr.run(mode=None)
     finished_scraper = time.perf_counter()
 
     #Update dimension table (sync)
@@ -37,7 +42,7 @@ def main():
     dtb.sync_close_conn()
 
     #Update fact table (async)
-    if mode == 'fetch':
+    if used_mode == 'fetch':
         dtb.run_db_handler(pricelist=scrpr.pricelist)
     logger.info('Scraper finished.')
     end = time.perf_counter()
