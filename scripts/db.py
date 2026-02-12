@@ -60,7 +60,7 @@ class DbHandler():
 
     def transform_postcode(self, id, postcode):
         '''Transforms dimension table postcodes'''
-        match = re.search(r"^(\d{4})+(&nbsp;)?(\w\w{2})?(&nbsp;)?", postcode)
+        match = re.search(r"^(\d{4})+(&nbsp;)?(\w{2})?(&nbsp;)?", postcode)
         try:
             if match.group(3) == None:
                 return match.group(1)

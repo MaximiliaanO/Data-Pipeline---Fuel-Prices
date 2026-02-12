@@ -1,7 +1,7 @@
 #! python3
 #  Web-scraper to scrape price data from fuel stations from a specific Operator.
 
-import logging, os, time, datetime
+import logging, os, time, datetime, sys
 from scripts import scraper, db
 from pathlib import Path
 
