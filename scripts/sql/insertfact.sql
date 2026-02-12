@@ -6,5 +6,5 @@ INSERT INTO fact_prices(
     fuel_type,
     price
 )
-VALUES(%s, %s, %s, %s, %s)
+VALUES($1, $2, $3, $4, $5)
 ON CONFLICT (event_id) DO NOTHING;
